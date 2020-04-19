@@ -1,12 +1,51 @@
 #include <iostream>
 
 #include <QImage>
+#include <QPen>
+#include <QPainter>
+#include <QDateTime>
 #include <thread>
 #include <fstream>
+#include <iostream>
+#include <cmath>
 
 #include "v4l2encoder.h"
 
 using namespace std;
+
+
+void drawNumbers(QImage& image, int x, int y, const QString& lines)
+{
+
+}
+
+QImage drawTime(QImage &im, const QDateTime& dt)
+{
+    QImage out = im.copy();
+    QPainter painter(&out);
+
+    QString tm = dt.toString("hh:mm:ss.zzz");
+
+    qint64 t = dt.toMSecsSinceEpoch();
+    double d = sin(0.01 * t);
+    int c = 128 + 127 * d;
+    QColor color(c, c, c);
+
+    painter.fillRect(QRect(10, 10, 100, 100), color);
+//    QPen pen;
+//    pen.setWidth(2);
+//    pen.setColor(Qt::white);
+
+//    QFont f = painter.font();
+//    f.setPointSize(50);
+
+//    painter.setFont(f);
+//    painter.setPen(pen);
+
+//    painter.drawLine(20, 100, 20, 200);
+
+    return out;
+}
 
 void RGB2Yuv420p(unsigned char *yuv,
                                unsigned char *rgb,
@@ -54,10 +93,14 @@ int main(int argc, char *argv[])
     std::fstream fs;
     fs.open("tmp.h264", std::ios_base::binary | std::ios_base::out);
 
+    int countFrames = 10000;
+
     yuv.resize((image.width() * image.height() * 3)/2);
-    while(1){
-        RGB2Yuv420p(yuv.data(), image.bits(), image.width(), image.height());
-        if(enc.encodeFrame((uint8_t*)yuv.data(), image.width(), image.height(), data)){
+    while(countFrames-- >= 0){
+        std::cout << "count frames " << countFrames << std::endl;
+        QImage out = drawTime(image, QDateTime::currentDateTime());
+        RGB2Yuv420p(yuv.data(), out.bits(), out.width(), out.height());
+        if(enc.encodeFrame((uint8_t*)yuv.data(), out.width(), out.height(), data)){
             if(!data.empty()){
                 if(fs.is_open()){
                     fs.write((char*)data.data(), data.size());
