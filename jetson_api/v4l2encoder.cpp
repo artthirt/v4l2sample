@@ -25,6 +25,8 @@
 
 #define CHECK(val) if(val < 0){ printf("error num %d", val); return false; }
 
+using namespace v4l2encoder;
+
 class v4l2EncoderPrivate{
 public:
     bool mInit = false;
@@ -37,6 +39,10 @@ public:
     uint32_t mNumBFrames = 0;
     uint32_t mNumCaptureBuffers = 4;
     uint32_t mNumOutputBuffers = 4;
+    bool mEnableAllIFrameEncode = false;
+    bool mInsertSpsPpsAtIdrEnabled = false;
+    bool mInsertVuiEnabled = false;
+    int mIDRInterval = 256;
 
     std::shared_ptr<NvVideoEncoder> mNVEncoder;
 
@@ -76,6 +82,21 @@ public:
         ret = mNVEncoder->output_plane.setupPlane(V4L2_MEMORY_MMAP, mNumOutputBuffers, true, false);
         CHECK(ret);
         ret = mNVEncoder->capture_plane.setupPlane(V4L2_MEMORY_MMAP, mNumCaptureBuffers, true, false);
+        CHECK(ret);
+        ret = mNVEncoder->setEnableAllIFrameEncode(mEnableAllIFrameEncode);
+        CHECK(ret);
+        ret = mNVEncoder->setIDRInterval(mIDRInterval);
+        CHECK(ret);
+        ret = mNVEncoder->setInsertVuiEnabled(mInsertVuiEnabled);
+        CHECK(ret);
+        ret = mNVEncoder->setEnableAllIFrameEncode(mEnableAllIFrameEncode);
+        CHECK(ret);
+        ret = mNVEncoder->setInsertSpsPpsAtIdrEnabled(mInsertSpsPpsAtIdrEnabled);
+
+        if(mIFrameInterval > 0){
+            mNVEncoder->forceIDR();
+        }
+
         CHECK(ret);
         ret = mNVEncoder->output_plane.setStreamStatus(true);
         CHECK(ret);
@@ -189,7 +210,7 @@ public:
 
         int ret = 0;
 
-        std::cout << "output plane\n";
+        //std::cout << "output plane\n";
         int ret1 = set_plane_dq(&mNVEncoder->output_plane, [this, data, nv12](mapbuffer* buffer){
             copyframe(buffer, data, nv12);
         });
@@ -199,7 +220,7 @@ public:
         if(ret1 != 0){
             return -1;
         }
-        std::cout << "capture plane\n";
+        //std::cout << "capture plane\n";
         ret1 = capture_plane_dq(&mNVEncoder->capture_plane,
 
         [&](mapbuffer* buffer)
@@ -207,12 +228,12 @@ public:
             Buffer &b = buffer->planes[0];
             output.resize(b.bytesused);
             std::copy(b.buf, b.buf + b.bytesused, output.begin());
-            std::cout << "bytes write " << b.bytesused << "; numframe " << mNumFrame << std::endl;
-            size_t s = std::min((size_t)10, output.size());
-            for(int i = 0; i < s; ++i){
-                std::cout << (ushort) output[i] << " ";
-            }
-            std::cout << "\n";
+//            std::cout << "bytes write " << b.bytesused << "; numframe " << mNumFrame << std::endl;
+//            size_t s = std::min((size_t)10, output.size());
+//            for(int i = 0; i < s; ++i){
+//                std::cout << (ushort) output[i] << " ";
+//            }
+//            std::cout << "\n";
         }
         );
 
@@ -288,7 +309,6 @@ public:
                 buffer->planes[2].bytesused = buffer->planes[2].fmt.sizeimage;
             }
         }
-
         return 0;
     }
 };
@@ -304,6 +324,26 @@ v4l2Encoder::v4l2Encoder()
 v4l2Encoder::~v4l2Encoder()
 {
     mD.reset();
+}
+
+void v4l2Encoder::setInsertSpsPpsAtIdrEnabled(bool val)
+{
+    mD->mInsertSpsPpsAtIdrEnabled = val;
+}
+
+void v4l2Encoder::setIDRInterval(int val)
+{
+    mD->mIDRInterval = val;
+}
+
+void v4l2Encoder::setInsertVuiEnabled(bool enabled)
+{
+    mD->mInsertVuiEnabled = enabled;
+}
+
+void v4l2Encoder::setEnableAllIFrameEncode(bool val)
+{
+    mD->mEnableAllIFrameEncode = val;
 }
 
 void v4l2Encoder::setIFrameInterval(int val)

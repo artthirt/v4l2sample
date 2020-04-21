@@ -84,6 +84,13 @@ void RGB2Yuv420p(unsigned char *yuv,
 int main(int argc, char *argv[])
 {
     v4l2Encoder enc;
+    //enc.setIFrameInterval(2);
+    //enc.setNumBFrames(2);
+    enc.setEnableAllIFrameEncode(true);
+    enc.setInsertSpsPpsAtIdrEnabled(true);
+    enc.setInsertVuiEnabled(true);
+    enc.setIDRInterval(1);
+
     QImage image;
     image.load("test.bmp");
     image = image.convertToFormat(QImage::Format_RGB888);
@@ -96,12 +103,15 @@ int main(int argc, char *argv[])
     int countFrames = 10000;
 
     yuv.resize((image.width() * image.height() * 3)/2);
+    int id1 = 0, id2 = 0;
     while(countFrames-- >= 0){
         std::cout << "count frames " << countFrames << std::endl;
         QImage out = drawTime(image, QDateTime::currentDateTime());
+        std::cout << "put frame " << id1++ << "\n";
         RGB2Yuv420p(yuv.data(), out.bits(), out.width(), out.height());
         if(enc.encodeFrame((uint8_t*)yuv.data(), out.width(), out.height(), data)){
             if(!data.empty()){
+                std::cout << "output frame " << id2++ <<  ". size packet " << data.size() << "\n";
                 if(fs.is_open()){
                     fs.write((char*)data.data(), data.size());
                 }

@@ -19,6 +19,6 @@ contains(TARGET_ARCH, "arm64"){
 }
 LIBS += -L/usr/lib/$$TEGRA_ARMABI/  \
         -L/usr/lib/$$TEGRA_ARMABI/tegra/ \
-        -lnvbuf_utils
+        -lnvbuf_utils -lv4l2
 
 

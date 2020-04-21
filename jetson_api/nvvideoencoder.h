@@ -13,6 +13,8 @@ extern "C"{
     #include <libv4l2.h>
 }
 
+namespace v4l2encoder{
+
 struct Plane{
     uint32_t bytesperline = 0;
     uint32_t sizeimage = 0;
@@ -59,6 +61,8 @@ struct NvPlane{
 
     Plane planefmts[MAX_PLANES];
 
+    void release();
+
     int setupPlane(v4l2_memory typemem, int numbuf, bool f1, bool f2);
     int reqbufs(enum v4l2_memory mem_type, uint32_t num);
     int waitForDQThread(uint32_t ms);
@@ -92,6 +96,12 @@ public:
     int setOutputPlaneFormat(uint32_t pixfmt, uint32_t width, uint32_t height);
     int setProfile(uint32_t val);
     int setLevel(uint32_t val);
+    int setExtControls(struct v4l2_ext_controls &ctl);
+    int setEnableAllIFrameEncode(bool val);
+    int setInsertSpsPpsAtIdrEnabled(bool val);
+    int setIDRInterval(int val);
+    int setInsertVuiEnabled(bool enabled);
+    int forceIDR();
 
     uint32_t pixFmt() const { return mPixFmt; }
 
@@ -119,5 +129,7 @@ private:
     uint32_t mGopSIze = 1;
     bool mInit = false;
 };
+
+}
 
 #endif // NVVIDEOENCODER_H

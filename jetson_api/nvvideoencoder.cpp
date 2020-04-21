@@ -25,6 +25,8 @@ const char* nvhostenc = "/dev/nvhost-msenc";
 
 #define CLEAR(buf) memset(&buf, 0, sizeof(buf))
 
+using namespace v4l2encoder;
+
 NvVideoEncoder::NvVideoEncoder()
 {
     int res = v4l2_open(nvhostenc, O_RDWR);
@@ -226,8 +228,129 @@ int NvVideoEncoder::setLevel(uint32_t val)
     return ret;
 }
 
+int NvVideoEncoder::setExtControls(v4l2_ext_controls &ctl)
+{
+    int ret;
+
+    ret = v4l2_ioctl(mFD, VIDIOC_S_EXT_CTRLS, &ctl);
+
+    if (ret < 0)
+    {
+        std::cout << ("Error setting controls\n");
+    }
+    else
+    {
+        //COMP_DEBUG_MSG("Set controls");
+    }
+    return ret;
+}
+
+int NvVideoEncoder::setEnableAllIFrameEncode(bool val){
+    struct v4l2_ext_control control;
+    struct v4l2_ext_controls ctrls;
+
+    //        RETURN_ERROR_IF_FORMATS_NOT_SET();
+    //        RETURN_ERROR_IF_BUFFERS_REQUESTED();
+
+    memset(&control, 0, sizeof(control));
+    memset(&ctrls, 0, sizeof(ctrls));
+
+    ctrls.count = 1;
+    ctrls.controls = &control;
+    ctrls.ctrl_class = V4L2_CTRL_CLASS_MPEG;
+
+    control.id = V4L2_CID_MPEG_VIDEOENC_ENABLE_ALLIFRAME_ENCODE;
+    control.value = val;
+
+    return setExtControls(ctrls);
+}
+
+int NvVideoEncoder::setInsertSpsPpsAtIdrEnabled(bool val)
+{
+    struct v4l2_ext_control control;
+    struct v4l2_ext_controls ctrls;
+
+    //RETURN_ERROR_IF_FORMATS_NOT_SET();
+    //RETURN_ERROR_IF_BUFFERS_REQUESTED();
+
+    memset(&control, 0, sizeof(control));
+    memset(&ctrls, 0, sizeof(ctrls));
+
+    ctrls.count = 1;
+    ctrls.controls = &control;
+    ctrls.ctrl_class = V4L2_CTRL_CLASS_MPEG;
+
+    control.id = V4L2_CID_MPEG_VIDEOENC_INSERT_SPS_PPS_AT_IDR;
+    control.value = val;
+
+    return setExtControls(ctrls);
+}
+
+int NvVideoEncoder::setIDRInterval(int val)
+{
+    struct v4l2_ext_control control;
+    struct v4l2_ext_controls ctrls;
+
+//    RETURN_ERROR_IF_FORMATS_NOT_SET();
+//    RETURN_ERROR_IF_BUFFERS_REQUESTED();
+
+    memset(&control, 0, sizeof(control));
+    memset(&ctrls, 0, sizeof(ctrls));
+
+    ctrls.count = 1;
+    ctrls.controls = &control;
+    ctrls.ctrl_class = V4L2_CTRL_CLASS_MPEG;
+
+    control.id = V4L2_CID_MPEG_VIDEO_IDR_INTERVAL;
+    control.value = val;
+
+    return setExtControls(ctrls);
+}
+
+int NvVideoEncoder::setInsertVuiEnabled(bool enabled)
+{
+    struct v4l2_ext_control control;
+    struct v4l2_ext_controls ctrls;
+
+//     RETURN_ERROR_IF_FORMATS_NOT_SET();
+//     RETURN_ERROR_IF_BUFFERS_REQUESTED();
+
+    memset(&control, 0, sizeof(control));
+    memset(&ctrls, 0, sizeof(ctrls));
+
+    ctrls.count = 1;
+    ctrls.controls = &control;
+    ctrls.ctrl_class = V4L2_CTRL_CLASS_MPEG;
+
+    control.id = V4L2_CID_MPEG_VIDEOENC_INSERT_VUI;
+    control.value = enabled;
+
+    return setExtControls(ctrls);
+}
+
+int NvVideoEncoder::forceIDR()
+{
+    struct v4l2_ext_control control;
+    struct v4l2_ext_controls ctrls;
+
+    //RETURN_ERROR_IF_FORMATS_NOT_SET();
+
+    memset(&control, 0, sizeof(control));
+    memset(&ctrls, 0, sizeof(ctrls));
+
+    ctrls.count = 1;
+    ctrls.controls = &control;
+    ctrls.ctrl_class = V4L2_CTRL_CLASS_MPEG;
+
+    control.id = V4L2_CID_MPEG_MFC51_VIDEO_FORCE_FRAME_TYPE;
+
+    return (setExtControls(ctrls));
+}
+
 void NvVideoEncoder::release()
 {
+    capture_plane.release();
+    output_plane.release();
     if(mFD){
         v4l2_close(mFD);
         mFD = 0;
@@ -240,6 +363,11 @@ NvVideoEncoder *NvVideoEncoder::createVideoEncoder(const char *name)
 }
 
 ///////////////////////////////////////
+
+void NvPlane::release()
+{
+    buffers.clear();
+}
 
 int NvPlane::setupPlane(v4l2_memory typemem, int numbuf, bool f1, bool f2)
 {
@@ -406,7 +534,7 @@ int NvPlane::qBuffer(v4l2_buffer &buf)
     }
     int ret = v4l2_ioctl(fd, VIDIOC_QBUF, &buf);
 
-    std::cout << "qbuffer " << ret << std::endl;
+    //std::cout << "qbuffer " << ret << std::endl;
 
     return ret;
 }
@@ -422,7 +550,7 @@ int NvPlane::dqBuffer(v4l2_buffer &buf, mapbuffer **_buffer)
     do{
         ret = v4l2_ioctl(fd, VIDIOC_DQBUF, &buf);
 
-        std::cout << "dqbuffer " <<  ret << " " <<  buf.index << std::endl;
+        //std::cout << "dqbuffer " <<  ret << " " <<  buf.index << std::endl;
 
         if(ret == 0){
             mapbuffer &buffer = buffers[buf.index];
